@@ -1,0 +1,16 @@
+.env
+.env.test
+.env.production
+node_modules/
+
+.npm
+logs/
+
+.vscode/
+.idea/
+
+.DS_Store
+Thumbs.db
+
+package-lock.json
+yarn.lock
