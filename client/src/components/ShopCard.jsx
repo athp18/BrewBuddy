@@ -1,6 +1,6 @@
 import { MapPin, Clock, DollarSign, Bookmark } from 'lucide-react';
 import StarRating from './StarRating';
-import { usersApi } from '../services/api';
+import { usersApi, resolvePhoto } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useUnits } from '../hooks/useUnits';
 import { useState } from 'react';
@@ -33,7 +33,8 @@ const ShopCard = ({ shop, onClick }) => {
 
   const distanceLabel = shop.distanceM != null ? formatDistance(shop.distanceM) : null;
 
-  const photo = shop.photos?.[0];
+  const rawPhoto = shop.photos?.[0];
+  const photo = rawPhoto ? { ...rawPhoto, url: resolvePhoto(rawPhoto.url) } : null;
 
   return (
     <div

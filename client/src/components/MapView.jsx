@@ -74,7 +74,7 @@ const MapView = ({ location, shops, selectedShop, onShopSelect, onAreaChange }) 
           }
           const center = map.getCenter();
           const zoom   = map.getZoom();
-          if (onAreaChange) {
+          if (onAreaChange && center) {
             onAreaChange({
               lat:    center.lat(),
               lng:    center.lng(),

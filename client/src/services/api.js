@@ -1,5 +1,14 @@
 import axios from 'axios';
 
+const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/api$/, '');
+
+/** Resolve a photo URL — turns server-relative paths into absolute ones. */
+export const resolvePhoto = (url) => {
+  if (!url) return null;
+  if (url.startsWith('/')) return `${API_BASE}${url}`;
+  return url;
+};
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
   timeout: 10000,

@@ -98,7 +98,7 @@ export const scoreShops = async (shops, user, userLat, userLng) => {
     const ratingScore = shop.rating ? shop.rating / 5 : 0.5;
 
     // 2. Distance score (25%)
-    const distanceM = haversineDistance(
+    const distanceM = distanceMeters(
       userLat, userLng,
       shop.geometry.location.lat,
       shop.geometry.location.lng
@@ -259,7 +259,7 @@ function deriveBrewReason(shop, shopFreq, allPreferenceTags, pastGoodReviews, di
 }
 
 // Haversine formula — returns distance in metres
-function haversineDistance(lat1, lng1, lat2, lng2) {
+export function distanceMeters(lat1, lng1, lat2, lng2) {
   const R = 6371000;
   const toRad = (x) => (x * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
