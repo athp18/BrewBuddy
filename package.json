@@ -1,0 +1,20 @@
+{
+  "name": "brewbuddy",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=server\" \"npm run dev --workspace=client\"",
+    "install:all": "npm install && npm install --workspace=client && npm install --workspace=server",
+    "build": "npm run build --workspace=client"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "mongodb": "^7.2.0"
+  }
+}

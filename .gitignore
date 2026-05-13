@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment variables (contain API keys — never commit these)
+.env
+*/.env
+
+# Build output
+dist/
+*/dist/
+build/
+*/build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / OS
+.DS_Store
+.vscode/
+*.swp
