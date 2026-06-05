@@ -24,31 +24,31 @@ router.get('/:reference', async (req, res, next) => {
       return res.status(404).end();
     }
 
-    // Check DB cache first
+    // Check DB cache for the resolved CDN url
     const cached = await PhotoCache.findOne({ photoReference: reference });
-    if (cached) {
-      res.set('Cache-Control', `public, max-age=${SEVEN_DAYS_S}`);
-      return res.redirect(302, cached.resolvedUrl);
-    }
+    const imageUrl = cached?.resolvedUrl || null;
 
-    // Follow the Google redirect without downloading the full image
     const googleUrl = `${GOOGLE_PHOTO_URL}?maxwidth=${maxwidth}&photoreference=${reference}&key=${KEY}`;
-    const response = await axios.get(googleUrl, {
-      maxRedirects: 0,
-      validateStatus: (s) => s >= 200 && s < 400,
+
+    // Stream the image through the server so the browser never touches Google CDN directly.
+    // This avoids CORP/COEP issues and keeps the API key server-side.
+    const upstream = await axios.get(imageUrl || googleUrl, {
+      responseType: 'stream',
+      timeout: 10000,
     });
 
-    const resolvedUrl = response.headers.location || response.request?.res?.responseUrl;
-
-    if (!resolvedUrl) {
-      return res.status(404).end();
+    // If we fetched from Google directly, cache the final resolved URL for next time
+    if (!imageUrl) {
+      const resolvedUrl = upstream.request?.res?.responseUrl || upstream.config?.url;
+      if (resolvedUrl && resolvedUrl !== googleUrl) {
+        PhotoCache.create({ photoReference: reference, resolvedUrl }).catch(() => {});
+      }
     }
 
-    // Cache resolved URL (fire-and-forget — don't block the response)
-    PhotoCache.create({ photoReference: reference, resolvedUrl }).catch(() => {});
-
+    res.set('Content-Type', upstream.headers['content-type'] || 'image/jpeg');
     res.set('Cache-Control', `public, max-age=${SEVEN_DAYS_S}`);
-    res.redirect(302, resolvedUrl);
+    res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    upstream.data.pipe(res);
   } catch (err) {
     // Don't propagate photo errors — just return 404 so the client shows its placeholder
     res.status(404).end();
