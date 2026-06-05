@@ -116,5 +116,7 @@ export const cachePhotoReferences = (shops) => {
  * The /api/photos/:ref route fetches from Google server-side and caches the result,
  * so the API key is never exposed to the client.
  */
-export const photoUrl = (photoReference, maxWidth = 800) =>
-  `/api/photos/${photoReference}?w=${maxWidth}`;
+export const photoUrl = (photoReference, maxWidth = 800) => {
+  const base = process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || 5001}`;
+  return `${base}/api/photos/${photoReference}?w=${maxWidth}`;
+};
