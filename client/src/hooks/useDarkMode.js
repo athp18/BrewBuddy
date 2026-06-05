@@ -1,15 +1,10 @@
 import { useEffect, useState } from 'react';
 
 /**
- * Persists dark mode preference to localStorage and toggles the `dark` class
- * on <html>. Initialises from localStorage, falling back to the OS preference.
+ * Toggles dark mode within the session. Always starts in light mode.
  */
 export const useDarkMode = () => {
-  const [dark, setDark] = useState(() => {
-    const stored = localStorage.getItem('brewbuddy-theme');
-    if (stored) return stored === 'dark';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
+  const [dark, setDark] = useState(false);
 
   useEffect(() => {
     const root = document.documentElement;

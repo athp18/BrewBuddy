@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { X, MapPin, Phone, Globe, Clock, Bookmark, ChevronRight, Navigation, Coffee, Sparkles } from 'lucide-react';
 import StarRating from './StarRating';
 import ReviewModal from './ReviewModal';
-import { shopsApi, usersApi, resolvePhoto } from '../services/api';
+import { shopsApi, usersApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useUnits } from '../hooks/useUnits';
 
@@ -110,7 +110,7 @@ const ShopDetail = ({ placeId, distanceM, onClose }) => {
           {shop.photos?.length > 0 ? (
             <>
               <img
-                src={resolvePhoto(shop.photos[activePhoto]?.url)}
+                src={shop.photos[activePhoto]?.url}
                 alt={shop.name}
                 className="w-full h-full object-cover"
               />

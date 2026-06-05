@@ -1,4 +1,5 @@
 import axios from 'axios';
+import ShopMeta from '../models/ShopMeta.js';
 
 const BASE_URL = 'https://maps.googleapis.com/maps/api/place';
 const KEY = process.env.GOOGLE_PLACES_API_KEY;
@@ -94,9 +95,26 @@ export const textSearch = async (query, lat, lng) => {
 };
 
 /**
- * Build a photo URL from a photo reference.
- * @param {string} photoReference
- * @param {number} maxWidth
+ * Persist the first photo_reference for each shop so we can always rebuild the URL later.
+ * Fire-and-forget — never blocks the request path.
+ */
+export const cachePhotoReferences = (shops) => {
+  const ops = shops
+    .filter((s) => s.place_id && s.photos?.[0]?.photo_reference)
+    .map((s) => ({
+      updateOne: {
+        filter: { placeId: s.place_id },
+        update: { $set: { photoReference: s.photos[0].photo_reference, updatedAt: new Date() } },
+        upsert: true,
+      },
+    }));
+  if (ops.length) ShopMeta.bulkWrite(ops).catch(() => {});
+};
+
+/**
+ * Build an internal proxy URL for a photo reference.
+ * The /api/photos/:ref route fetches from Google server-side and caches the result,
+ * so the API key is never exposed to the client.
  */
 export const photoUrl = (photoReference, maxWidth = 800) =>
-  `${BASE_URL}/photo?maxwidth=${maxWidth}&photoreference=${photoReference}&key=${KEY}`;
+  `/api/photos/${photoReference}?w=${maxWidth}`;

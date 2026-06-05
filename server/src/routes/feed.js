@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import protect from '../middleware/auth.js';
-import { nearbyCoffeeShops, photoUrl } from '../services/googlePlaces.js';
+import { nearbyCoffeeShops, photoUrl, cachePhotoReferences } from '../services/googlePlaces.js';
 import { scoreShops } from '../services/recommendations.js';
 import { generateFeedSummary, generateWhyBlurbs } from '../services/claude.js';
 import { recomputeTasteProfile } from '../services/tasteProfile.js';
@@ -40,13 +40,17 @@ router.get('/', protect, async (req, res, next) => {
       (await Review.find({ user: req.user._id }).select('placeId').lean()).map((r) => r.placeId)
     );
 
+    // Persist photo references before scoring strips the raw data
+    cachePhotoReferences(nearbyRaw);
+
     // Score and attach photos to all nearby shops
     const scored = await scoreShops(nearbyRaw, user, userLat, userLng);
     const withPhotos = scored.map((shop) => ({
       ...shop,
-      photos: (shop.photos || []).slice(0, 1).map((p) => ({
-        url: photoUrl(p.photo_reference, 400),
-      })),
+      photos: (shop.photos || [])
+        .filter((p) => p.photo_reference)
+        .slice(0, 1)
+        .map((p) => ({ url: photoUrl(p.photo_reference, 400) })),
     }));
 
     // "For you" — unreviewed, sorted by brewScore desc (top 10)

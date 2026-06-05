@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Bookmark, Star, MapPin, Coffee, Sparkles, Clock } from 'lucide-react';
-import { feedApi, resolvePhoto } from '../services/api';
+import { feedApi } from '../services/api';
 import { useLocation } from '../hooks/useLocation';
 import { useUnits } from '../hooks/useUnits';
 import { useAuth } from '../context/AuthContext';
@@ -16,7 +16,7 @@ const SavedPill = ({ shop, onSelect }) => (
   >
     <div className="w-16 h-16 rounded-2xl overflow-hidden bg-cream-200 dark:bg-night-raised border border-cream-300 dark:border-night-border">
       {shop.photoUrl ? (
-        <img src={resolvePhoto(shop.photoUrl)} alt={shop.name} className="w-full h-full object-cover" />
+        <img src={shop.photoUrl} alt={shop.name} className="w-full h-full object-cover" />
       ) : (
         <div className="w-full h-full flex items-center justify-center">
           <Coffee size={20} className="text-cream-400 dark:text-night-border" />
@@ -38,7 +38,8 @@ const FeedShopCard = ({ shop, onSelect, formatDistance }) => (
   >
     <div className="h-28 bg-cream-200 dark:bg-night-raised relative">
       {shop.photos?.[0]?.url ? (
-        <img src={resolvePhoto(shop.photos[0].url)} alt={shop.name} className="w-full h-full object-cover" />
+        <img src={shop.photos[0].url} alt={shop.name} className="w-full h-full object-cover"
+          onError={(e) => { e.currentTarget.style.display = 'none'; }} />
       ) : (
         <div className="w-full h-full flex items-center justify-center text-cream-400 dark:text-night-border">
           <Coffee size={22} />

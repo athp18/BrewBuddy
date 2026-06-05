@@ -11,6 +11,7 @@ import shopRoutes from './routes/shops.js';
 import reviewRoutes from './routes/reviews.js';
 import userRoutes from './routes/users.js';
 import feedRoutes from './routes/feed.js';
+import photoRoutes from './routes/photos.js';
 import errorHandler from './middleware/errorHandler.js';
 
 const app = express();
@@ -34,6 +35,7 @@ app.use('/api', limiter);
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/photos', photoRoutes);
 app.use('/api/shops', shopRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/users', userRoutes);

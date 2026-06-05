@@ -1,38 +1,11 @@
 import { Router } from 'express';
-import axios from 'axios';
 import protect from '../middleware/auth.js';
-import { nearbyCoffeeShops, placeDetails, textSearch, photoUrl } from '../services/googlePlaces.js';
+import { nearbyCoffeeShops, placeDetails, textSearch, photoUrl, cachePhotoReferences } from '../services/googlePlaces.js';
 import { scoreShops, predictRating, distanceMeters } from '../services/recommendations.js';
 import { parseTagsFromGoogleReviews, GOOGLE_DRINK_KEYWORDS, GOOGLE_VIBE_KEYWORDS } from '../services/parsers.js';
 import Review from '../models/Review.js';
 
 const router = Router();
-
-/**
- * GET /api/shops/photo
- * Proxies Google Places photo so the API key stays server-side and
- * CORS/redirect issues are avoided.
- */
-router.get('/photo', async (req, res, next) => {
-  try {
-    const { ref, w = 400 } = req.query;
-    if (!ref) return res.status(400).json({ message: 'ref is required' });
-    const url = photoUrl(ref, parseInt(w));
-    const response = await axios.get(url, {
-      responseType: 'stream',
-      maxRedirects: 5,
-    });
-    res.setHeader('Content-Type', response.headers['content-type'] || 'image/jpeg');
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.setHeader('Cache-Control', 'public, max-age=86400');
-    response.data.pipe(res);
-  } catch (err) {
-    // Return a 1×1 transparent GIF so the <img> doesn't show a broken icon
-    res.setHeader('Content-Type', 'image/gif');
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.end(Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'));
-  }
-});
 
 /**
  * GET /api/shops/nearby
@@ -52,16 +25,21 @@ router.get('/nearby', protect, async (req, res, next) => {
       pagetoken
     );
 
+    cachePhotoReferences(results);
+
     // Score and rank for this user
     const ranked = await scoreShops(results, req.user, parseFloat(lat), parseFloat(lng));
 
     // Attach photo URLs server-side so the client never needs the Places API key
     const shopsWithPhotos = ranked.map((shop) => ({
       ...shop,
-      photos: (shop.photos || []).slice(0, 1).map((p) => ({
-        url: `/api/shops/photo?ref=${encodeURIComponent(p.photo_reference)}&w=400`,
-        attribution: p.html_attributions?.[0] || '',
-      })),
+      photos: (shop.photos || [])
+        .filter((p) => p.photo_reference)
+        .slice(0, 1)
+        .map((p) => ({
+          url: photoUrl(p.photo_reference, 400),
+          attribution: p.html_attributions?.[0] || '',
+        })),
     }));
 
     res.json({ shops: shopsWithPhotos, nextPageToken });
@@ -83,6 +61,7 @@ router.get('/search', protect, async (req, res, next) => {
     const parsedLat = lat ? parseFloat(lat) : null;
     const parsedLng = lng ? parseFloat(lng) : null;
     const results = await textSearch(q, parsedLat, parsedLng);
+    cachePhotoReferences(results);
     const hasLocation = Number.isFinite(parsedLat) && Number.isFinite(parsedLng);
 
     const shopsWithPhotos = results.map((shop) => ({
@@ -97,10 +76,13 @@ router.get('/search', protect, async (req, res, next) => {
             )),
           }
         : {}),
-      photos: (shop.photos || []).slice(0, 1).map((p) => ({
-        url: `/api/shops/photo?ref=${encodeURIComponent(p.photo_reference)}&w=400`,
-        attribution: p.html_attributions?.[0] || '',
-      })),
+      photos: (shop.photos || [])
+        .filter((p) => p.photo_reference)
+        .slice(0, 1)
+        .map((p) => ({
+          url: photoUrl(p.photo_reference, 400),
+          attribution: p.html_attributions?.[0] || '',
+        })),
     }));
 
     res.json({ shops: shopsWithPhotos });
@@ -142,7 +124,7 @@ router.get('/:placeId', protect, async (req, res, next) => {
 
     // Attach photo URLs to the first 5 photos
     const photos = (shop.photos || []).slice(0, 5).map((p) => ({
-      url: `/api/shops/photo?ref=${encodeURIComponent(p.photo_reference)}&w=800`,
+      url: photoUrl(p.photo_reference, 800),
       attribution: p.html_attributions?.[0] || '',
     }));
 
