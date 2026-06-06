@@ -6,6 +6,7 @@ import Feed from './pages/Feed';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
+import AuthCallback from './pages/AuthCallback';
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -25,6 +26,7 @@ const AppRoutes = () => (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/" element={<PrivateRoute><Feed /></PrivateRoute>} />
       <Route path="/discover" element={<PrivateRoute><Discover /></PrivateRoute>} />
       <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />

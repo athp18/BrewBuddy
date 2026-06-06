@@ -31,6 +31,12 @@ export const AuthProvider = ({ children }) => {
     return data.user;
   }, []);
 
+  const loginWithToken = useCallback(async (token) => {
+    localStorage.setItem('bb_token', token);
+    const { data } = await authApi.me();
+    setUser(data.user);
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem('bb_token');
     setUser(null);
@@ -41,7 +47,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, loginWithToken, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
