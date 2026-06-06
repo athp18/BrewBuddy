@@ -44,7 +44,7 @@ const ReviewModal = ({ shop, existing, onClose, onSaved }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-roast-dark/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60">
       <div className="bg-white dark:bg-night-surface rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
         <div className="flex items-center justify-between p-5 border-b border-cream-200 dark:border-night-border sticky top-0 bg-white dark:bg-night-surface rounded-t-3xl">
           <div>

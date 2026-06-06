@@ -43,6 +43,7 @@
   .tag {
     @apply inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1
            bg-cream-100 text-espresso-600 rounded-full border border-cream-200
+           cursor-pointer select-none
            dark:bg-night-raised dark:text-espresso-200 dark:border-night-border;
   }
 
