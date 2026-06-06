@@ -21,7 +21,7 @@ const NUM_WEEKS = 26; // ~6 months
 
 const DAY_LABELS = [null, 'M', null, 'W', null, 'F', null];
 
-const ReviewHeatmap = ({ reviews }) => {
+const ReviewHeatmap = ({ reviews, selectedDate, onSelectDate }) => {
   const [tooltip, setTooltip] = useState(null); // { x, y, ds, count }
 
   const countByDate = useMemo(() => {
@@ -145,8 +145,12 @@ const ReviewHeatmap = ({ reviews }) => {
                   width={CELL}
                   height={CELL}
                   rx={2}
-                  className={`heatmap-${getLevel(day.count)} cursor-default`}
+                  className={`heatmap-${getLevel(day.count)} ${day.count > 0 ? 'cursor-pointer' : 'cursor-default'}`}
+                  style={selectedDate === day.ds ? { outline: '2px solid #6b4c2a', outlineOffset: '1px' } : {}}
                   onMouseEnter={() => setTooltip({ x: cx + CELL / 2, y: cy - 4, ds: day.ds, count: day.count })}
+                  onClick={() => {
+                    if (day.count > 0) onSelectDate(selectedDate === day.ds ? null : day.ds);
+                  }}
                 />
               );
             })
@@ -188,6 +192,7 @@ const Profile = () => {
   const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
   const { unit, toggleUnit, formatDistance } = useUnits();
+  const [selectedDate, setSelectedDate] = useState(null);
   const [editingPrefs, setEditingPrefs] = useState(false);
   const [prefs, setPrefs] = useState(user?.preferences || {});
   const [savingPrefs, setSavingPrefs] = useState(false);
@@ -281,7 +286,13 @@ const Profile = () => {
         </div>
 
         {/* Review heatmap */}
-        {!isLoading && <ReviewHeatmap reviews={reviews} />}
+        {!isLoading && (
+          <ReviewHeatmap
+            reviews={reviews}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+          />
+        )}
 
         {/* Coffee Passport */}
         <div>
@@ -425,36 +436,62 @@ const Profile = () => {
 
         {/* Review history */}
         <div>
-          <h3 className="font-semibold text-roast-mid mb-3 flex items-center gap-2">
-            <Star size={16} className="text-espresso-400" /> Your reviews
-          </h3>
-          {isLoading ? (
-            <div className="card p-6 text-center text-sm text-espresso-400">Loading…</div>
-          ) : reviews.length === 0 ? (
-            <div className="card p-6 text-center">
-              <Coffee size={28} className="text-cream-300 mx-auto mb-2" />
-              <p className="text-sm text-espresso-400">No reviews yet.</p>
-              <p className="text-xs text-espresso-300 mt-1">Discover a coffee shop and leave your first review!</p>
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              {reviews.map((r) => (
-                <div key={r._id} className="card p-4">
-                  <div className="flex items-start justify-between gap-2 mb-1.5">
-                    <p className="font-medium text-sm text-roast-dark">{r.shopName}</p>
-                    <StarRating value={r.rating} size={13} />
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-roast-mid flex items-center gap-2">
+              <Star size={16} className="text-espresso-400" />
+              {selectedDate
+                ? new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                : 'Your reviews'}
+            </h3>
+            {selectedDate && (
+              <button
+                onClick={() => setSelectedDate(null)}
+                className="text-xs text-espresso-400 hover:text-espresso-600 underline"
+              >
+                Show all
+              </button>
+            )}
+          </div>
+
+          {(() => {
+            const filtered = selectedDate
+              ? reviews.filter((r) => new Date(r.createdAt).toISOString().slice(0, 10) === selectedDate)
+              : reviews;
+
+            if (isLoading) return (
+              <div className="card p-6 text-center text-sm text-espresso-400">Loading…</div>
+            );
+            if (filtered.length === 0) return (
+              <div className="card p-6 text-center">
+                <Coffee size={28} className="text-cream-300 mx-auto mb-2" />
+                <p className="text-sm text-espresso-400">
+                  {selectedDate ? 'No reviews on this day.' : 'No reviews yet.'}
+                </p>
+                {!selectedDate && (
+                  <p className="text-xs text-espresso-300 mt-1">Discover a coffee shop and leave your first review!</p>
+                )}
+              </div>
+            );
+            return (
+              <div className="space-y-2.5">
+                {filtered.map((r) => (
+                  <div key={r._id} className="card p-4">
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <p className="font-medium text-sm text-roast-dark">{r.shopName}</p>
+                      <StarRating value={r.rating} size={13} />
+                    </div>
+                    {r.body && <p className="text-sm text-espresso-400 mb-2">{r.body}</p>}
+                    <div className="flex flex-wrap gap-1">
+                      {r.tags?.map((t) => <span key={t} className="tag text-xs">{t.replace(/-/g, ' ')}</span>)}
+                    </div>
+                    <p className="text-xs text-espresso-300 mt-2">
+                      {new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
                   </div>
-                  {r.body && <p className="text-sm text-espresso-400 mb-2">{r.body}</p>}
-                  <div className="flex flex-wrap gap-1">
-                    {r.tags?.map((t) => <span key={t} className="tag text-xs">{t.replace(/-/g, ' ')}</span>)}
-                  </div>
-                  <p className="text-xs text-espresso-300 mt-2">
-                    {new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
