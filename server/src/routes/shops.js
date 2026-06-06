@@ -2,8 +2,9 @@ import { Router } from 'express';
 import protect from '../middleware/auth.js';
 import { nearbyCoffeeShops, placeDetails, textSearch, photoUrl, cachePhotoReferences } from '../services/googlePlaces.js';
 import { scoreShops, predictRating, distanceMeters } from '../services/recommendations.js';
-import { parseTagsFromGoogleReviews, GOOGLE_DRINK_KEYWORDS, GOOGLE_VIBE_KEYWORDS } from '../services/parsers.js';
+import { parseTagsFromGoogleReviews, extractTagStrings, GOOGLE_DRINK_KEYWORDS, GOOGLE_VIBE_KEYWORDS } from '../services/parsers.js';
 import Review from '../models/Review.js';
+import ShopMeta from '../models/ShopMeta.js';
 
 const router = Router();
 
@@ -156,6 +157,18 @@ router.get('/:placeId', protect, async (req, res, next) => {
     if (topVibes.length === 0 && shop.reviews?.length > 0) {
       topVibes = parseTagsFromGoogleReviews(shop.reviews, GOOGLE_VIBE_KEYWORDS);
       topVibesSource = 'google';
+    }
+
+    // Cache Google signals in ShopMeta so the recommendation engine can use them
+    // even for shops no one has BrewBuddy-reviewed yet. Fire-and-forget.
+    if (shop.reviews?.length > 0) {
+      const drinkSignals = extractTagStrings(shop.reviews, GOOGLE_DRINK_KEYWORDS);
+      const vibeSignals  = extractTagStrings(shop.reviews, GOOGLE_VIBE_KEYWORDS);
+      ShopMeta.findOneAndUpdate(
+        { placeId },
+        { $set: { googleDrinkSignals: drinkSignals, googleVibeSignals: vibeSignals, signalsCachedAt: new Date(), updatedAt: new Date() } },
+        { upsert: true }
+      ).catch(() => {});
     }
 
     // Strip raw Google reviews from the shop object before sending to client

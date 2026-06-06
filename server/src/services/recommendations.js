@@ -1,4 +1,5 @@
 import Review from '../models/Review.js';
+import ShopMeta from '../models/ShopMeta.js';
 
 /**
  * Score a list of Google Places results for a given user.
@@ -36,11 +37,22 @@ export const scoreShops = async (shops, user, userLat, userLng) => {
   const GOOGLE_DECAY_AT    = 10; // reviews until Google signals are fully phased out
 
   const shopIds = shops.map((s) => s.place_id).filter(Boolean);
-  const communityReviews = shopIds.length
-    ? await Review.find({ placeId: { $in: shopIds } })
-        .select('placeId tags googleDrinkSignals googleVibeSignals')
-        .lean()
-    : [];
+  const [communityReviews, shopMetaDocs] = await Promise.all([
+    shopIds.length
+      ? Review.find({ placeId: { $in: shopIds } })
+          .select('placeId tags googleDrinkSignals googleVibeSignals')
+          .lean()
+      : [],
+    shopIds.length
+      ? ShopMeta.find({ placeId: { $in: shopIds } })
+          .select('placeId googleDrinkSignals googleVibeSignals')
+          .lean()
+      : [],
+  ]);
+
+  // Build a map of placeId → ShopMeta Google signals for fast lookup
+  const shopMetaMap = {};
+  shopMetaDocs.forEach((m) => { shopMetaMap[m.placeId] = m; });
 
   // First pass: count explicit BrewBuddy tags per shop (before mixing in Google signals)
   const brewbuddyReviewCount = {}; // placeId → number of BrewBuddy reviews
@@ -107,11 +119,20 @@ export const scoreShops = async (shops, user, userLat, userLng) => {
     const distanceScore = Math.max(0, 1 - distanceM / maxDist);
 
     // 3. Drink/vibe match score (20%)
-    // Compare the user's preference tags against *this shop's* community-reviewed tags.
-    // A latte lover gets a boost at shops where reviewers have tagged lattes, not everywhere.
-    // Falls back to 0.5 (neutral) when the shop has no BrewBuddy reviews yet.
-    let tagScore = 0.5; // neutral default for shops with no community data
-    const shopFreq = shopTagFreq[shop.place_id];
+    // Primary: BrewBuddy community tags for this shop.
+    // Fallback: Google-parsed signals cached in ShopMeta (populated when any user opens the detail page).
+    // This ensures new shops without BrewBuddy reviews still get signal-based scoring.
+    let shopFreq = shopTagFreq[shop.place_id];
+    if (!shopFreq) {
+      const meta = shopMetaMap[shop.place_id];
+      if (meta && (meta.googleDrinkSignals?.length || meta.googleVibeSignals?.length)) {
+        shopFreq = {};
+        (meta.googleDrinkSignals || []).forEach((t) => { shopFreq[t] = (shopFreq[t] || 0) + 0.5; });
+        (meta.googleVibeSignals  || []).forEach((t) => { shopFreq[t] = (shopFreq[t] || 0) + 0.5; });
+      }
+    }
+
+    let tagScore = 0.5; // neutral default for shops with no signal data at all
     if (allPreferenceTags.length > 0 && shopFreq) {
       const matches = allPreferenceTags.reduce((sum, t) => sum + (shopFreq[t] ? 1 : 0), 0);
       tagScore = matches / allPreferenceTags.length;
@@ -247,14 +268,14 @@ function deriveBrewReason(shop, shopFreq, allPreferenceTags, pastGoodReviews, di
     }
   }
 
-  // 4. Proximity (within ~40% of the user's max distance)
-  if (distanceScore > 0.6) return "Because it's close to you";
-
-  // 5. Google rating fallback — most good coffee shops sit 4.0–4.4
+  // 4. Google rating — more informative than proximity in dense areas
   if (shop.rating >= 4.3) return `Rated ${shop.rating?.toFixed(1)} on Google`;
   if (shop.rating >= 4.0) return 'Well-rated nearby';
 
-  // 6. Catch-all — something always shows
+  // 5. Proximity — only for genuinely close shops (within ~15% of maxDist)
+  if (distanceScore > 0.85) return "Because it's close to you";
+
+  // 6. Catch-all
   return 'Popular nearby';
 }
 
