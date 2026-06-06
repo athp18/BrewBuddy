@@ -38,8 +38,8 @@ export default {
         },
       },
       fontFamily: {
-        display: ['"Playfair Display"', 'Georgia', 'serif'],
-        sans: ['"DM Sans"', 'system-ui', 'sans-serif'],
+        display: ['"Fraunces"', 'Georgia', 'serif'],
+        sans: ['"Inter"', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         '2xl': '1rem',
