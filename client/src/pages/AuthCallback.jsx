@@ -17,7 +17,11 @@ const AuthCallback = () => {
     }
 
     loginWithToken(token)
-      .then(() => navigate('/', { replace: true }))
+      .then((user) => {
+        // New OAuth users have no vibes set — send them to onboarding
+        const isNew = !user?.preferences?.vibes?.length && !(user?.tasteProfile?.reviewCount > 0);
+        navigate(isNew ? '/onboarding' : '/', { replace: true });
+      })
       .catch(() => navigate('/login?error=oauth_failed', { replace: true }));
   }, []);
 

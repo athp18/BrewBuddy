@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Loader2, Bookmark, Star, MapPin, Coffee, Sparkles, Clock } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader2, Bookmark, Star, MapPin, Coffee, Sparkles, Clock, RefreshCw } from 'lucide-react';
 import { feedApi } from '../services/api';
 import { useLocation } from '../hooks/useLocation';
 import { useUnits } from '../hooks/useUnits';
 import { useAuth } from '../context/AuthContext';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import ShopDetail from '../components/ShopDetail';
 import StarRating from '../components/StarRating';
 
@@ -199,6 +200,7 @@ const Feed = () => {
   const { location, loading: locationLoading } = useLocation();
   const { formatDistance } = useUnits();
   const [selectedPlaceId, setSelectedPlaceId] = useState(null);
+  const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['feed', location?.lat, location?.lng],
@@ -206,6 +208,10 @@ const Feed = () => {
     enabled: !!location,
     select: (res) => res.data,
     staleTime: 5 * 60 * 1000, // 5 min
+  });
+
+  const { pullDistance, pulling } = usePullToRefresh(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['feed'] });
   });
 
   if (locationLoading || isLoading) return (
@@ -230,6 +236,20 @@ const Feed = () => {
 
   return (
     <div className="min-h-screen bg-cream-50 dark:bg-night pt-14 pb-24">
+      {/* Pull-to-refresh indicator */}
+      {pulling && pullDistance > 10 && (
+        <div
+          className="flex items-center justify-center text-espresso-400 transition-all"
+          style={{ height: pullDistance, overflow: 'hidden' }}
+        >
+          <RefreshCw
+            size={20}
+            className={pullDistance >= 72 ? 'animate-spin text-espresso-500' : ''}
+            style={{ transform: `rotate(${pullDistance * 3}deg)` }}
+          />
+        </div>
+      )}
+
       {/* Greeting */}
       <div className="px-4 pt-5 pb-4">
         <h1 className="font-display text-2xl font-semibold text-roast-dark dark:text-cream-100">

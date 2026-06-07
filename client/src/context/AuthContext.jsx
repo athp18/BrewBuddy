@@ -35,6 +35,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('bb_token', token);
     const { data } = await authApi.me();
     setUser(data.user);
+    return data.user;
   }, []);
 
   const logout = useCallback(() => {

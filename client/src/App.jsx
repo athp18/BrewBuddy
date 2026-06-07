@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import ErrorBoundary from './components/ErrorBoundary';
 import Navbar from './components/Navbar';
 import Discover from './pages/Discover';
 import Feed from './pages/Feed';
@@ -7,6 +8,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
 import AuthCallback from './pages/AuthCallback';
+import Onboarding from './pages/Onboarding';
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -27,6 +29,7 @@ const AppRoutes = () => (
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/onboarding" element={<PrivateRoute><Onboarding /></PrivateRoute>} />
       <Route path="/" element={<PrivateRoute><Feed /></PrivateRoute>} />
       <Route path="/discover" element={<PrivateRoute><Discover /></PrivateRoute>} />
       <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
@@ -37,7 +40,9 @@ const AppRoutes = () => (
 
 const App = () => (
   <AuthProvider>
-    <AppRoutes />
+    <ErrorBoundary>
+      <AppRoutes />
+    </ErrorBoundary>
   </AuthProvider>
 );
 
