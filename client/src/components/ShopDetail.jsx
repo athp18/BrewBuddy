@@ -31,6 +31,16 @@ const VIBE_LABEL = {
   'good-value':      'Good value',
 };
 
+const getDirectionsUrl = (shop) => {
+  const lat = shop.geometry?.location?.lat;
+  const lng = shop.geometry?.location?.lng;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  if (isIOS) {
+    return `maps://maps.apple.com/?daddr=${lat},${lng}&q=${encodeURIComponent(shop.name)}`;
+  }
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&destination_place_id=${encodeURIComponent(shop.place_id)}`;
+};
+
 // Format a user's first name + last initial, e.g. "Atharv P."
 const displayName = (name = '') => {
   const parts = name.trim().split(' ');
@@ -252,7 +262,20 @@ const ShopDetail = ({ placeId, distanceM, onClose }) => {
             {shop.formatted_address && (
               <div className="flex items-start gap-2.5 text-sm text-roast-mid dark:text-cream-200">
                 <MapPin size={16} className="text-espresso-400 mt-0.5 shrink-0" />
-                <span>{shop.formatted_address}</span>
+                <div className="flex-1 min-w-0">
+                  <span>{shop.formatted_address}</span>
+                  <a
+                    href={getDirectionsUrl(shop)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 mt-1.5 text-xs font-medium text-espresso-500
+                               bg-cream-100 dark:bg-night-raised border border-cream-200 dark:border-night-border
+                               px-2.5 py-1 rounded-lg hover:bg-cream-200 dark:hover:bg-night-border transition-colors"
+                  >
+                    <Navigation size={11} />
+                    Get directions
+                  </a>
+                </div>
               </div>
             )}
             {shop.formatted_phone_number && (
