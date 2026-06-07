@@ -74,7 +74,8 @@ Rules:
 - Mention their actual preferences if available
 - If they have new recommendations, tease one or two by name
 - Never start with "I" or "As"
-- No emojis`;
+- No emojis
+- Output ONLY the intro text itself — no labels, prefixes, or preamble`;
 
   const msg = await client.messages.create({
     model: SONNET,
@@ -82,7 +83,9 @@ Rules:
     messages: [{ role: 'user', content: prompt }],
   });
 
-  return msg.content[0]?.text?.trim() || '';
+  const raw = msg.content[0]?.text?.trim() || '';
+  // Strip any "Here is the feed intro:" style preamble Claude occasionally adds
+  return raw.replace(/^[^"]*"(.*)"[^"]*$/, '$1').replace(/^[\w\s]+:\s*/i, '').trim();
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
