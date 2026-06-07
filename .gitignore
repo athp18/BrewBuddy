@@ -1,0 +1,13 @@
+node_modules/
+*/node_modules/
+.env
+*/.env
+dist/
+*/dist/
+build/
+*/build/
+*.log
+npm-debug.log*
+.DS_Store
+.vscode/
+*.swp
