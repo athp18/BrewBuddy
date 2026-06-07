@@ -114,7 +114,7 @@ router.get('/:placeId', protect, async (req, res, next) => {
       placeDetails(placeId),
       Review.findOne({ user: req.user._id, placeId }),
       Review.find({ placeId })
-        .populate('user', 'name')
+        .populate('user', 'name username avatar')
         .sort('-createdAt')
         .limit(5)
         .lean(),

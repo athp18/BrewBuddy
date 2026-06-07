@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
 import StarRating from './StarRating';
 import { reviewsApi } from '../services/api';
 
@@ -13,11 +13,13 @@ const DRINK_TAGS = [
   'latte', 'cappuccino', 'cold-brew', 'matcha', 'flat-white', 'americano',
 ];
 
-const ReviewModal = ({ shop, existing, onClose, onSaved }) => {
+const ReviewModal = ({ shop, existing, onClose, onSaved, onDeleted }) => {
   const [rating, setRating] = useState(existing?.rating || 0);
   const [tags, setTags] = useState(existing?.tags || []);
   const [body, setBody] = useState(existing?.body || '');
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState('');
 
   const toggleTag = (tag) =>
@@ -43,13 +45,28 @@ const ReviewModal = ({ shop, existing, onClose, onSaved }) => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!existing?._id) return;
+    setDeleting(true);
+    try {
+      await reviewsApi.delete(existing._id);
+      onDeleted?.();
+    } catch {
+      setError('Failed to delete review');
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60">
       <div className="bg-white dark:bg-night-surface rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
         <div className="flex items-center justify-between p-5 border-b border-cream-200 dark:border-night-border sticky top-0 bg-white dark:bg-night-surface rounded-t-3xl">
           <div>
             <h3 className="font-display font-semibold text-roast-dark dark:text-cream-100">{shop.name}</h3>
-            <p className="text-xs text-espresso-400 dark:text-espresso-300">Write your review</p>
+            <p className="text-xs text-espresso-400 dark:text-espresso-300">
+              {existing ? 'Edit your review' : 'Write your review'}
+            </p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-cream-100 dark:hover:bg-night-raised rounded-xl transition-colors">
             <X size={18} className="text-espresso-300" />
@@ -65,17 +82,11 @@ const ReviewModal = ({ shop, existing, onClose, onSaved }) => {
 
           {/* Vibe tags */}
           <div>
-            <p className="text-sm font-medium text-roast-mid dark:text-cream-200 mb-2">What was the vibe? (optional)</p>
+            <p className="text-sm font-medium text-roast-mid dark:text-cream-200 mb-2">What was the vibe? <span className="font-normal text-espresso-300">(optional)</span></p>
             <div className="flex flex-wrap gap-2">
               {VIBE_TAGS.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => toggleTag(t)}
-                  className={`tag capitalize transition-colors ${
-                    tags.includes(t) ? 'bg-espresso-400 text-white border-espresso-400' : ''
-                  }`}
-                >
+                <button key={t} type="button" onClick={() => toggleTag(t)}
+                  className={`tag capitalize transition-colors ${tags.includes(t) ? 'bg-espresso-400 text-white border-espresso-400' : ''}`}>
                   {t.replace(/-/g, ' ')}
                 </button>
               ))}
@@ -84,17 +95,11 @@ const ReviewModal = ({ shop, existing, onClose, onSaved }) => {
 
           {/* Drink tags */}
           <div>
-            <p className="text-sm font-medium text-roast-mid dark:text-cream-200 mb-2">What did you order? (optional)</p>
+            <p className="text-sm font-medium text-roast-mid dark:text-cream-200 mb-2">What did you order? <span className="font-normal text-espresso-300">(optional)</span></p>
             <div className="flex flex-wrap gap-2">
               {DRINK_TAGS.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => toggleTag(t)}
-                  className={`tag capitalize transition-colors ${
-                    tags.includes(t) ? 'bg-espresso-400 text-white border-espresso-400' : ''
-                  }`}
-                >
+                <button key={t} type="button" onClick={() => toggleTag(t)}
+                  className={`tag capitalize transition-colors ${tags.includes(t) ? 'bg-espresso-400 text-white border-espresso-400' : ''}`}>
                   {t.replace(/-/g, ' ')}
                 </button>
               ))}
@@ -103,7 +108,7 @@ const ReviewModal = ({ shop, existing, onClose, onSaved }) => {
 
           {/* Text */}
           <div>
-            <p className="text-sm font-medium text-roast-mid dark:text-cream-200 mb-2">Tell us more (optional)</p>
+            <p className="text-sm font-medium text-roast-mid dark:text-cream-200 mb-2">Tell us more <span className="font-normal text-espresso-300">(optional)</span></p>
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
@@ -117,13 +122,32 @@ const ReviewModal = ({ shop, existing, onClose, onSaved }) => {
 
           {error && <p className="text-sm text-red-500">{error}</p>}
 
-          <button
-            type="submit"
-            disabled={saving || rating === 0}
-            className="btn-primary w-full"
-          >
+          <button type="submit" disabled={saving || rating === 0} className="btn-primary w-full">
             {saving ? 'Saving…' : existing ? 'Update review' : 'Submit review'}
           </button>
+
+          {/* Delete — only for existing reviews */}
+          {existing?._id && (
+            confirmDelete ? (
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-roast-mid flex-1">Delete this review?</p>
+                <button type="button" onClick={() => setConfirmDelete(false)}
+                  className="text-xs text-espresso-400 hover:text-espresso-600 px-3 py-1.5 rounded-lg border border-cream-200">
+                  Cancel
+                </button>
+                <button type="button" onClick={handleDelete} disabled={deleting}
+                  className="text-xs text-red-500 hover:text-red-700 font-medium px-3 py-1.5 rounded-lg border border-red-200 hover:border-red-400 transition-colors disabled:opacity-50">
+                  {deleting ? 'Deleting…' : 'Yes, delete'}
+                </button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => setConfirmDelete(true)}
+                className="flex items-center justify-center gap-1.5 w-full text-xs text-espresso-300 hover:text-red-500 transition-colors py-1">
+                <Trash2 size={13} />
+                Delete review
+              </button>
+            )
+          )}
         </form>
       </div>
     </div>

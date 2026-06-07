@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, useLayoutEffect } from 'react';
 import { Search, SlidersHorizontal, Loader2, MapPin, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import MapView from '../components/MapView';
@@ -155,8 +155,20 @@ const Discover = () => {
   // Reset visible count when shops/filters change
   useEffect(() => { setVisibleCount(PAGE_SIZE); }, [filters, sortBy, debouncedQuery]);
 
-  const visibleShops   = shops.slice(0, visibleCount);
-  const hasMore        = visibleCount < shops.length;
+  const visibleShops = shops.slice(0, visibleCount);
+  const hasMore      = visibleCount < shops.length;
+
+  // IntersectionObserver sentinel for infinite scroll
+  const sentinelRef = useRef(null);
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting && hasMore) setVisibleCount((c) => c + PAGE_SIZE); },
+      { threshold: 0.1 }
+    );
+    obs.observe(sentinelRef.current);
+    return () => obs.disconnect();
+  }, [hasMore]);
 
   const activeFilterCount = [
     filters.openNow,
@@ -294,16 +306,8 @@ const Discover = () => {
                   <ShopCard key={shop.place_id} shop={shop} onClick={(s) => setSelectedShop(s)} />
                 ))}
 
-                {/* Load more */}
-                {hasMore && (
-                  <button
-                    onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-                    className="w-full py-3 text-sm text-espresso-500 font-medium hover:text-espresso-700
-                               border border-dashed border-cream-300 rounded-xl hover:border-espresso-300 transition-colors"
-                  >
-                    Show {Math.min(PAGE_SIZE, shops.length - visibleCount)} more
-                  </button>
-                )}
+                {/* Infinite scroll sentinel */}
+                {hasMore && <div ref={sentinelRef} className="h-8" />}
 
                 {areaLoading && (
                   <div className="flex items-center justify-center py-3 gap-2 text-xs text-espresso-400">

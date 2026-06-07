@@ -61,6 +61,7 @@ export const usersApi = {
   updatePreferences: (data) => api.patch('/users/preferences', data),
   toggleSaved: (placeId, meta) => api.patch(`/users/saved/${placeId}`, meta || {}),
   updateProfile: (data) => api.patch('/users/profile', data),
+  dismissShop: (placeId) => api.patch(`/users/dismiss/${placeId}`),
   passport: () => api.get('/users/passport'),
 };
 

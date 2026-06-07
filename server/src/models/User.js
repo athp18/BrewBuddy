@@ -27,9 +27,26 @@ const userSchema = new mongoose.Schema(
       minlength: [6, 'Password must be at least 6 characters'],
       select: false,
     },
+    username: {
+      type: String,
+      trim: true,
+      maxlength: [30, 'Username cannot exceed 30 characters'],
+      match: [/^[a-zA-Z0-9_]*$/, 'Username can only contain letters, numbers, and underscores'],
+      sparse: true,
+      unique: true,
+    },
+    bio: {
+      type: String,
+      maxlength: [150, 'Bio cannot exceed 150 characters'],
+      default: '',
+    },
     avatar: {
       type: String,
       default: '',
+    },
+    dismissedShops: {
+      type: [String],
+      default: [],
     },
     // Static preferences — set at onboarding, editable in profile
     preferences: {

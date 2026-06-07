@@ -33,8 +33,9 @@ router.get('/', protect, async (req, res, next) => {
       nearbyCoffeeShops(userLat, userLng, 8000),
     ]);
 
-    // Build a set of place IDs the user has already reviewed or saved
+    // Build a set of place IDs the user has already reviewed, saved, or dismissed
     const reviewedIds = new Set(recentReviews.map((r) => r.placeId));
+    const dismissedIds = new Set(user.dismissedShops || []);
     // Fetch all reviewed place IDs (not just the 5 recent ones)
     const allReviewedIds = new Set(
       (await Review.find({ user: req.user._id }).select('placeId').lean()).map((r) => r.placeId)
@@ -53,14 +54,14 @@ router.get('/', protect, async (req, res, next) => {
         .map((p) => ({ url: photoUrl(p.photo_reference, 400) })),
     }));
 
-    // "For you" — unreviewed, sorted by brewScore desc (top 10)
-    const forYou = withPhotos
-      .filter((s) => !allReviewedIds.has(s.place_id))
-      .slice(0, 10);
+    const isVisible = (s) => !allReviewedIds.has(s.place_id) && !dismissedIds.has(s.place_id);
 
-    // "New nearby" — also unreviewed, sorted by distance (different cut from forYou)
+    // "For you" — unreviewed + not dismissed, sorted by brewScore desc (top 10)
+    const forYou = withPhotos.filter(isVisible).slice(0, 10);
+
+    // "New nearby" — same filter, sorted by distance
     const newNearby = withPhotos
-      .filter((s) => !allReviewedIds.has(s.place_id))
+      .filter(isVisible)
       .sort((a, b) => (a.distanceM ?? Infinity) - (b.distanceM ?? Infinity))
       .slice(0, 10);
 
@@ -92,7 +93,7 @@ router.get('/', protect, async (req, res, next) => {
 
     const rowMap = {}; // title → shops[]
     withPhotos
-      .filter((s) => !allReviewedIds.has(s.place_id))
+      .filter(isVisible)
       .forEach((s) => {
         // Drink-based row: use the user's top preferred drink this shop is known for
         if (s.matchedDrinks?.length > 0) {

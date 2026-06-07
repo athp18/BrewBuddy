@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, Bookmark, Star, MapPin, Coffee, Sparkles, Clock } from 'lucide-react';
-import { feedApi } from '../services/api';
+import { Loader2, Bookmark, Star, MapPin, Coffee, Sparkles, Clock, X } from 'lucide-react';
+import { feedApi, usersApi } from '../services/api';
 import { useLocation } from '../hooks/useLocation';
 import { useUnits } from '../hooks/useUnits';
 import { useAuth } from '../context/AuthContext';
@@ -30,45 +30,57 @@ const SavedPill = ({ shop, onSelect }) => (
 );
 
 // ── Horizontal shop card (compact) ───────────────────────────────────────────
-const FeedShopCard = ({ shop, onSelect, formatDistance }) => (
-  <button
-    onClick={() => onSelect(shop.place_id)}
-    className="shrink-0 w-44 bg-white dark:bg-night-surface rounded-2xl border border-cream-200 dark:border-night-border overflow-hidden shadow-sm
-               hover:shadow-md hover:-translate-y-0.5 transition-all text-left"
-  >
-    <div className="h-28 bg-cream-200 dark:bg-night-raised relative">
-      {shop.photos?.[0]?.url ? (
-        <img src={shop.photos[0].url} alt={shop.name} className="w-full h-full object-cover"
-          onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-      ) : (
-        <div className="w-full h-full flex items-center justify-center text-cream-400 dark:text-night-border">
-          <Coffee size={22} />
-        </div>
-      )}
-      {shop.brewScore != null && (
-        <div className="absolute top-1.5 left-1.5 brew-score text-[10px] px-1.5 py-0.5">
-          ☕ {(shop.brewScore * 100).toFixed(0)}
-        </div>
-      )}
-    </div>
-    <div className="p-2.5">
-      <p className="text-xs font-semibold text-roast-dark dark:text-cream-100 line-clamp-1">{shop.name}</p>
-      <div className="flex items-center gap-1.5 mt-0.5">
-        <StarRating value={shop.rating || 0} size={10} />
-        <span className="text-[10px] text-espresso-400 dark:text-espresso-300">{shop.rating?.toFixed(1)}</span>
+const FeedShopCard = ({ shop, onSelect, onDismiss, formatDistance }) => (
+  <div className="shrink-0 w-44 relative group">
+    <button
+      onClick={() => onSelect(shop.place_id)}
+      className="w-full bg-white dark:bg-night-surface rounded-2xl border border-cream-200 dark:border-night-border overflow-hidden shadow-sm
+                 hover:shadow-md hover:-translate-y-0.5 transition-all text-left"
+    >
+      <div className="h-28 bg-cream-200 dark:bg-night-raised relative">
+        {shop.photos?.[0]?.url ? (
+          <img src={shop.photos[0].url} alt={shop.name} className="w-full h-full object-cover"
+            onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-cream-400 dark:text-night-border">
+            <Coffee size={22} />
+          </div>
+        )}
+        {shop.brewScore != null && (
+          <div className="absolute top-1.5 left-1.5 brew-score text-[10px] px-1.5 py-0.5">
+            ☕ {(shop.brewScore * 100).toFixed(0)}
+          </div>
+        )}
       </div>
-      {shop.distanceM != null && (
-        <p className="text-[10px] text-espresso-300 dark:text-espresso-400 mt-0.5 flex items-center gap-0.5">
-          <MapPin size={9} /> {formatDistance(shop.distanceM)}
-        </p>
-      )}
-      {shop.brewReason && (
-        <p className="text-[10px] text-espresso-500 dark:text-espresso-300 mt-1.5 font-medium line-clamp-2 border-t border-cream-100 dark:border-night-border pt-1.5 leading-snug">
-          {shop.brewReason}
-        </p>
-      )}
-    </div>
-  </button>
+      <div className="p-2.5">
+        <p className="text-xs font-semibold text-roast-dark dark:text-cream-100 line-clamp-1">{shop.name}</p>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <StarRating value={shop.rating || 0} size={10} />
+          <span className="text-[10px] text-espresso-400 dark:text-espresso-300">{shop.rating?.toFixed(1)}</span>
+        </div>
+        {shop.distanceM != null && (
+          <p className="text-[10px] text-espresso-300 dark:text-espresso-400 mt-0.5 flex items-center gap-0.5">
+            <MapPin size={9} /> {formatDistance(shop.distanceM)}
+          </p>
+        )}
+        {shop.brewReason && (
+          <p className="text-[10px] text-espresso-500 dark:text-espresso-300 mt-1.5 font-medium line-clamp-2 border-t border-cream-100 dark:border-night-border pt-1.5 leading-snug">
+            {shop.brewReason}
+          </p>
+        )}
+      </div>
+    </button>
+    {/* Dismiss button — appears on hover (desktop) or always visible on touch */}
+    <button
+      onClick={(e) => { e.stopPropagation(); onDismiss(shop.place_id); }}
+      title="Not interested"
+      className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/40 text-white
+                 flex items-center justify-center opacity-0 group-hover:opacity-100
+                 focus:opacity-100 transition-opacity"
+    >
+      <X size={12} />
+    </button>
+  </div>
 );
 
 // ── Review card (vertical list) ───────────────────────────────────────────────
@@ -216,14 +228,22 @@ const Feed = () => {
   const { location, loading: locationLoading } = useLocation();
   const { formatDistance } = useUnits();
   const [selectedPlaceId, setSelectedPlaceId] = useState(null);
+  const [dismissed, setDismissed] = useState(new Set());
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['feed', location?.lat, location?.lng],
     queryFn: () => feedApi.get(location.lat, location.lng),
     enabled: !!location,
     select: (res) => res.data,
-    staleTime: 5 * 60 * 1000, // 5 min
+    staleTime: 5 * 60 * 1000,
   });
+
+  const handleDismiss = useCallback((placeId) => {
+    setDismissed((prev) => new Set([...prev, placeId]));
+    usersApi.dismissShop(placeId).catch(() => {});
+  }, []);
+
+  const notDismissed = useCallback((s) => !dismissed.has(s.place_id), [dismissed]);
 
   if (locationLoading || isLoading) return (
     <div className="flex items-center justify-center h-screen">
@@ -281,17 +301,18 @@ const Feed = () => {
         )}
 
         {/* For you */}
-        {forYou.length > 0 && (
+        {forYou.filter(notDismissed).length > 0 && (
           <Section
             title="For you"
             icon={<Star size={15} className="text-espresso-400" />}
             horizontal
           >
-            {forYou.map((s) => (
+            {forYou.filter(notDismissed).map((s) => (
               <FeedShopCard
                 key={s.place_id}
                 shop={s}
                 onSelect={setSelectedPlaceId}
+                onDismiss={handleDismiss}
                 formatDistance={formatDistance}
               />
             ))}
@@ -299,23 +320,28 @@ const Feed = () => {
         )}
 
         {/* "Because you…" rows */}
-        {becauseRows.map((row) => (
-          <Section
-            key={row.title}
-            title={row.title}
-            icon={<Sparkles size={15} className="text-espresso-400" />}
-            horizontal
-          >
-            {row.shops.map((s) => (
-              <FeedShopCard
-                key={s.place_id}
-                shop={s}
-                onSelect={setSelectedPlaceId}
-                formatDistance={formatDistance}
-              />
-            ))}
-          </Section>
-        ))}
+        {becauseRows.map((row) => {
+          const visible = row.shops.filter(notDismissed);
+          if (visible.length === 0) return null;
+          return (
+            <Section
+              key={row.title}
+              title={row.title}
+              icon={<Sparkles size={15} className="text-espresso-400" />}
+              horizontal
+            >
+              {visible.map((s) => (
+                <FeedShopCard
+                  key={s.place_id}
+                  shop={s}
+                  onSelect={setSelectedPlaceId}
+                  onDismiss={handleDismiss}
+                  formatDistance={formatDistance}
+                />
+              ))}
+            </Section>
+          );
+        })}
 
         {/* Recently reviewed */}
         {recentReviews.length > 0 && (
@@ -330,17 +356,18 @@ const Feed = () => {
         )}
 
         {/* New nearby */}
-        {newNearby.length > 0 && (
+        {newNearby.filter(notDismissed).length > 0 && (
           <Section
             title="New nearby"
             icon={<MapPin size={15} className="text-espresso-400" />}
             horizontal
           >
-            {newNearby.map((s) => (
+            {newNearby.filter(notDismissed).map((s) => (
               <FeedShopCard
                 key={s.place_id}
                 shop={s}
                 onSelect={setSelectedPlaceId}
+                onDismiss={handleDismiss}
                 formatDistance={formatDistance}
               />
             ))}

@@ -41,9 +41,10 @@ const getDirectionsUrl = (shop) => {
   return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&destination_place_id=${encodeURIComponent(shop.place_id)}`;
 };
 
-// Format a user's first name + last initial, e.g. "Atharv P."
-const displayName = (name = '') => {
-  const parts = name.trim().split(' ');
+// Prefer @username, fall back to "First L."
+const displayName = (user = {}) => {
+  if (user.username) return `@${user.username}`;
+  const parts = (user.name || '').trim().split(' ');
   if (parts.length === 1) return parts[0];
   return `${parts[0]} ${parts[parts.length - 1][0]}.`;
 };
@@ -327,11 +328,14 @@ const ShopDetail = ({ placeId, distanceM, onClose }) => {
                   <div key={r._id} className="bg-cream-50 dark:bg-night-raised rounded-xl p-3 border border-cream-200 dark:border-night-border">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-espresso-200 dark:bg-night-border flex items-center justify-center text-[10px] font-bold text-espresso-600 dark:text-espresso-200">
-                          {(r.user?.name?.[0] ?? '?').toUpperCase()}
+                        <div className="w-6 h-6 rounded-full bg-espresso-200 dark:bg-night-border flex items-center justify-center text-[10px] font-bold text-espresso-600 dark:text-espresso-200 overflow-hidden shrink-0">
+                          {r.user?.avatar
+                            ? <img src={r.user.avatar} alt="" className="w-full h-full object-cover" />
+                            : (r.user?.name?.[0] ?? '?').toUpperCase()
+                          }
                         </div>
                         <span className="text-xs font-medium text-roast-mid dark:text-cream-200">
-                          {displayName(r.user?.name ?? 'Anonymous')}
+                          {displayName(r.user ?? {})}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -406,6 +410,10 @@ const ShopDetail = ({ placeId, distanceM, onClose }) => {
           onClose={() => setShowReview(false)}
           onSaved={(review) => {
             setData((d) => ({ ...d, userReview: review }));
+            setShowReview(false);
+          }}
+          onDeleted={() => {
+            setData((d) => ({ ...d, userReview: null }));
             setShowReview(false);
           }}
         />

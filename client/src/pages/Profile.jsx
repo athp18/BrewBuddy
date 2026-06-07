@@ -1,9 +1,10 @@
 import { useState, useRef, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { LogOut, Star, Coffee, Settings2, Bookmark, Download, Loader2 } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { LogOut, Star, Coffee, Settings2, Bookmark, Download, Loader2, Pencil, Check, X as XIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { reviewsApi, usersApi } from '../services/api';
 import StarRating from '../components/StarRating';
+import ReviewModal from '../components/ReviewModal';
 import PassportCard from '../components/PassportCard';
 import { useNavigate } from 'react-router-dom';
 import { useUnits } from '../hooks/useUnits';
@@ -191,11 +192,33 @@ const ReviewHeatmap = ({ reviews, selectedDate, onSelectDate }) => {
 const Profile = () => {
   const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { unit, toggleUnit, formatDistance } = useUnits();
   const [selectedDate, setSelectedDate] = useState(null);
+  const [editingReview, setEditingReview] = useState(null);
   const [editingPrefs, setEditingPrefs] = useState(false);
   const [prefs, setPrefs] = useState(user?.preferences || {});
   const [savingPrefs, setSavingPrefs] = useState(false);
+
+  // Identity (username / bio)
+  const [editingIdentity, setEditingIdentity] = useState(false);
+  const [identityForm, setIdentityForm] = useState({ username: user?.username || '', bio: user?.bio || '' });
+  const [savingIdentity, setSavingIdentity] = useState(false);
+  const [identityError, setIdentityError] = useState('');
+
+  const saveIdentity = async () => {
+    setSavingIdentity(true);
+    setIdentityError('');
+    try {
+      const { data } = await usersApi.updateProfile(identityForm);
+      updateUser({ username: data.user.username, bio: data.user.bio });
+      setEditingIdentity(false);
+    } catch (err) {
+      setIdentityError(err.response?.data?.message || 'Failed to save');
+    } finally {
+      setSavingIdentity(false);
+    }
+  };
 
   const passportRef = useRef(null);
   const [downloading, setDownloading] = useState(false);
@@ -256,18 +279,76 @@ const Profile = () => {
       <div className="max-w-lg mx-auto px-4 py-6 space-y-5">
         {/* User header */}
         <div className="card p-5">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-espresso-400 flex items-center justify-center text-white text-xl font-display font-semibold">
-              {user?.name?.charAt(0).toUpperCase()}
+          <div className="flex items-start gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-espresso-400 flex items-center justify-center text-white text-xl font-display font-semibold shrink-0 overflow-hidden">
+              {user?.avatar
+                ? <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+                : user?.name?.charAt(0).toUpperCase()
+              }
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="font-display font-semibold text-roast-dark text-lg truncate">{user?.name}</h2>
-              <p className="text-sm text-espresso-400 truncate">{user?.email}</p>
+              <div className="flex items-center gap-2">
+                <h2 className="font-display font-semibold text-roast-dark dark:text-cream-100 text-lg truncate">{user?.name}</h2>
+                <button
+                  onClick={() => { setIdentityForm({ username: user?.username || '', bio: user?.bio || '' }); setEditingIdentity(true); }}
+                  className="p-1 rounded-lg hover:bg-cream-100 dark:hover:bg-night-raised transition-colors text-espresso-300 hover:text-espresso-500 shrink-0"
+                >
+                  <Pencil size={13} />
+                </button>
+              </div>
+              {user?.username
+                ? <p className="text-sm text-espresso-500 dark:text-espresso-300 font-medium">@{user.username}</p>
+                : <p className="text-xs text-espresso-300 italic">No username set</p>
+              }
+              {user?.bio && <p className="text-xs text-espresso-400 dark:text-espresso-300 mt-0.5 line-clamp-2">{user.bio}</p>}
+              <p className="text-xs text-espresso-300 truncate mt-0.5">{user?.email}</p>
             </div>
-            <button onClick={handleLogout} className="p-2 rounded-xl hover:bg-cream-100 transition-colors text-espresso-300">
+            <button onClick={handleLogout} className="p-2 rounded-xl hover:bg-cream-100 dark:hover:bg-night-raised transition-colors text-espresso-300 shrink-0">
               <LogOut size={18} />
             </button>
           </div>
+
+          {/* Identity editor */}
+          {editingIdentity && (
+            <div className="mt-4 space-y-3 border-t border-cream-100 dark:border-night-border pt-4">
+              <div>
+                <label className="text-xs font-medium text-roast-mid dark:text-cream-200 mb-1 block">Username</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-espresso-300 text-sm">@</span>
+                  <input
+                    className="input pl-7 text-sm"
+                    placeholder="your_username"
+                    maxLength={30}
+                    value={identityForm.username}
+                    onChange={(e) => setIdentityForm((f) => ({ ...f, username: e.target.value.replace(/[^a-zA-Z0-9_]/g, '') }))}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-roast-mid dark:text-cream-200 mb-1 block">Bio</label>
+                <textarea
+                  className="input resize-none text-sm"
+                  rows={2}
+                  maxLength={150}
+                  placeholder="A couple words about you…"
+                  value={identityForm.bio}
+                  onChange={(e) => setIdentityForm((f) => ({ ...f, bio: e.target.value }))}
+                />
+                <p className="text-xs text-espresso-300 text-right">{identityForm.bio.length}/150</p>
+              </div>
+              {identityError && <p className="text-xs text-red-500">{identityError}</p>}
+              <div className="flex gap-2">
+                <button onClick={saveIdentity} disabled={savingIdentity}
+                  className="btn-primary flex items-center gap-1.5 text-sm px-4 py-2">
+                  <Check size={14} /> {savingIdentity ? 'Saving…' : 'Save'}
+                </button>
+                <button onClick={() => { setEditingIdentity(false); setIdentityError(''); }}
+                  className="btn-secondary flex items-center gap-1.5 text-sm px-4 py-2">
+                  <XIcon size={14} /> Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Stats */}
           <div className="grid grid-cols-3 gap-3 mt-5">
@@ -477,8 +558,16 @@ const Profile = () => {
                 {filtered.map((r) => (
                   <div key={r._id} className="card p-4">
                     <div className="flex items-start justify-between gap-2 mb-1.5">
-                      <p className="font-medium text-sm text-roast-dark">{r.shopName}</p>
-                      <StarRating value={r.rating} size={13} />
+                      <p className="font-medium text-sm text-roast-dark dark:text-cream-100">{r.shopName}</p>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <StarRating value={r.rating} size={13} />
+                        <button
+                          onClick={() => setEditingReview(r)}
+                          className="p-1 rounded-lg hover:bg-cream-100 dark:hover:bg-night-raised transition-colors text-espresso-300 hover:text-espresso-500"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                      </div>
                     </div>
                     {r.body && <p className="text-sm text-espresso-400 mb-2">{r.body}</p>}
                     <div className="flex flex-wrap gap-1">
@@ -494,6 +583,22 @@ const Profile = () => {
           })()}
         </div>
       </div>
+
+      {editingReview && (
+        <ReviewModal
+          shop={{ place_id: editingReview.placeId, name: editingReview.shopName }}
+          existing={editingReview}
+          onClose={() => setEditingReview(null)}
+          onSaved={() => {
+            setEditingReview(null);
+            queryClient.invalidateQueries({ queryKey: ['my-reviews'] });
+          }}
+          onDeleted={() => {
+            setEditingReview(null);
+            queryClient.invalidateQueries({ queryKey: ['my-reviews'] });
+          }}
+        />
+      )}
     </div>
   );
 };
