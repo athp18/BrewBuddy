@@ -1,10 +1,9 @@
 import { useState, useRef, useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { LogOut, Star, Coffee, Settings2, Bookmark, Download, Loader2, Pencil } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { LogOut, Star, Coffee, Settings2, Bookmark, Download, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { reviewsApi, usersApi } from '../services/api';
 import StarRating from '../components/StarRating';
-import ReviewModal from '../components/ReviewModal';
 import PassportCard from '../components/PassportCard';
 import { useNavigate } from 'react-router-dom';
 import { useUnits } from '../hooks/useUnits';
@@ -192,10 +191,8 @@ const ReviewHeatmap = ({ reviews, selectedDate, onSelectDate }) => {
 const Profile = () => {
   const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { unit, toggleUnit, formatDistance } = useUnits();
   const [selectedDate, setSelectedDate] = useState(null);
-  const [editingReview, setEditingReview] = useState(null); // review object being edited
   const [editingPrefs, setEditingPrefs] = useState(false);
   const [prefs, setPrefs] = useState(user?.preferences || {});
   const [savingPrefs, setSavingPrefs] = useState(false);
@@ -481,16 +478,7 @@ const Profile = () => {
                   <div key={r._id} className="card p-4">
                     <div className="flex items-start justify-between gap-2 mb-1.5">
                       <p className="font-medium text-sm text-roast-dark">{r.shopName}</p>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <StarRating value={r.rating} size={13} />
-                        <button
-                          onClick={() => setEditingReview(r)}
-                          className="p-1 rounded-lg hover:bg-cream-100 dark:hover:bg-night-raised transition-colors text-espresso-300 hover:text-espresso-500"
-                          title="Edit review"
-                        >
-                          <Pencil size={13} />
-                        </button>
-                      </div>
+                      <StarRating value={r.rating} size={13} />
                     </div>
                     {r.body && <p className="text-sm text-espresso-400 mb-2">{r.body}</p>}
                     <div className="flex flex-wrap gap-1">
@@ -506,18 +494,6 @@ const Profile = () => {
           })()}
         </div>
       </div>
-
-      {editingReview && (
-        <ReviewModal
-          shop={{ place_id: editingReview.placeId, name: editingReview.shopName }}
-          existing={editingReview}
-          onClose={() => setEditingReview(null)}
-          onSaved={() => {
-            setEditingReview(null);
-            queryClient.invalidateQueries({ queryKey: ['my-reviews'] });
-          }}
-        />
-      )}
     </div>
   );
 };
