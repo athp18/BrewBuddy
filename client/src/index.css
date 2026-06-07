@@ -70,11 +70,28 @@
   height: 100%;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar { width: 6px; }
+/* Global vertical scrollbar */
+::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { @apply bg-cream-300 rounded-full; }
 ::-webkit-scrollbar-thumb:hover { @apply bg-espresso-200; }
+
+/* Horizontal scroll strip — hidden until scrolling, then fades in */
+.scroll-x {
+  overflow-x: auto;
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: transparent transparent; /* Firefox: thumb track */
+}
+.scroll-x.is-scrolling {
+  scrollbar-color: #d4b896 transparent; /* Firefox: show while scrolling */
+}
+.scroll-x::-webkit-scrollbar { height: 3px; }
+.scroll-x::-webkit-scrollbar-track { background: transparent; }
+.scroll-x::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 999px;
+}
+.scroll-x.is-scrolling::-webkit-scrollbar-thumb { background: #d4b896; }
 
 /* Fade in animation */
 @keyframes fadeUp {

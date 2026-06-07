@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Bookmark, Star, MapPin, Coffee, Sparkles, Clock } from 'lucide-react';
 import { feedApi } from '../services/api';
@@ -179,6 +179,23 @@ const TasteProfileCard = ({ profile }) => {
 };
 
 // ── Section wrapper ───────────────────────────────────────────────────────────
+const HorizontalScroll = ({ children }) => {
+  const ref = useRef(null);
+  const timer = useRef(null);
+
+  const onScroll = useCallback(() => {
+    ref.current?.classList.add('is-scrolling');
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => ref.current?.classList.remove('is-scrolling'), 800);
+  }, []);
+
+  return (
+    <div ref={ref} onScroll={onScroll} className="scroll-x flex gap-3 px-4 pb-2">
+      {children}
+    </div>
+  );
+};
+
 const Section = ({ title, icon, children, horizontal = false }) => (
   <div>
     <div className="flex items-center gap-2 px-4 mb-3">
@@ -186,7 +203,7 @@ const Section = ({ title, icon, children, horizontal = false }) => (
       <h2 className="text-sm font-semibold text-roast-dark dark:text-cream-200">{title}</h2>
     </div>
     {horizontal ? (
-      <div className="flex gap-3 px-4 overflow-x-auto scrollbar-none pb-1">{children}</div>
+      <HorizontalScroll>{children}</HorizontalScroll>
     ) : (
       <div className="px-4 space-y-2.5">{children}</div>
     )}
