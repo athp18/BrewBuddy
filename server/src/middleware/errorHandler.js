@@ -15,9 +15,7 @@ const errorHandler = (err, req, res, next) => {
     statusCode = 400;
   }
 
-  if (process.env.NODE_ENV === 'development') {
-    console.error(err.stack);
-  }
+  console.error(`[${req.method} ${req.path}]`, err.message, err.stack?.split('\n')[1]?.trim());
 
   res.status(statusCode).json({ message });
 };
